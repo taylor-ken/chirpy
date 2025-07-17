@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
@@ -13,7 +14,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type successResponse struct {
-		Body bool `json:"valid"`
+		Body string `json:"cleaned_body"`
 	}
 
 	type errorResponse struct {
@@ -43,17 +44,41 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		w.Write(resp)
 	} else {
-		sucresp := successResponse{Body: true}    // Fix: use true, not "success"
-		successResp, err := json.Marshal(sucresp) // Fix: use a different variable name
+		cleaned_body := removeProfanity(chirp.Body)
+		sucresp := successResponse{Body: cleaned_body}
+		successResp, err := json.Marshal(sucresp)
 		if err != nil {
 			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500) // Fix: should be 500 for server error, not 400
+			w.WriteHeader(500)
 			return
 		}
 
 		w.Header().Add("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(200)
-		w.Write(successResp) // Fix: use the correct variable
+		w.Write(successResp)
 	}
 
+}
+
+func removeProfanity(s string) string {
+	profanities := []string{"kerfuffle", "sharbert", "fornax"}
+	out := []string{}
+	var found bool
+	words := strings.Split(s, " ")
+	for _, word := range words {
+		found = false
+		for _, profanity := range profanities {
+			if strings.ToLower(word) == profanity {
+				found = true
+				break
+			}
+		}
+		if found {
+			out = append(out, "****")
+		} else {
+			out = append(out, word)
+		}
+	}
+	out_string := strings.Join(out, " ")
+	return strings.TrimSpace(out_string)
 }
