@@ -41,8 +41,11 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	}
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
-		Body:   cleaned,
-		UserID: params.UserID,
+		Body: cleaned,
+		UserID: uuid.NullUUID{
+			UUID:  params.UserID,
+			Valid: true,
+		},
 	})
 	if err != nil {
 		fmt.Println("Chirp creation error:", err)
@@ -55,7 +58,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
 		Body:      chirp.Body,
-		UserID:    chirp.UserID,
+		UserID:    chirp.UserID.UUID,
 	})
 }
 
