@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -40,15 +39,16 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	myNullUUID := uuid.NullUUID{
+		UUID:  params.UserID, // Put your regular UUID here
+		Valid: true,          // Set this to true because you have a valid UUID
+	}
+
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
-		Body: cleaned,
-		UserID: uuid.NullUUID{
-			UUID:  params.UserID,
-			Valid: true,
-		},
+		Body:   cleaned,
+		UserID: myNullUUID,
 	})
 	if err != nil {
-		fmt.Println("Chirp creation error:", err)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
 		return
 	}

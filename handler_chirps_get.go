@@ -1,31 +1,51 @@
 package main
 
 import (
-	"context"
 	"net/http"
-	// other imports
+
+	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	chirpIDString := r.PathValue("chirpID")
+	chirpID, err := uuid.Parse(chirpIDString)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
+		return
+	}
 
-	dbChirps, err := cfg.db.GetChirps(ctx)
+	dbChirp, err := cfg.db.GetChirp(r.Context(), chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, Chirp{
+		ID:        dbChirp.ID,
+		CreatedAt: dbChirp.CreatedAt,
+		UpdatedAt: dbChirp.UpdatedAt,
+		UserID:    dbChirp.UserID.UUID,
+		Body:      dbChirp.Body,
+	})
+}
+
+func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
 		return
 	}
 
-	var chirps []Chirp
+	chirps := []Chirp{}
 	for _, dbChirp := range dbChirps {
-		chirp := Chirp{
+		chirps = append(chirps, Chirp{
 			ID:        dbChirp.ID,
 			CreatedAt: dbChirp.CreatedAt,
 			UpdatedAt: dbChirp.UpdatedAt,
-			UserID:    dbChirp.UserID.UUID, // This should work
+			UserID:    dbChirp.UserID.UUID,
 			Body:      dbChirp.Body,
-		}
-		chirps = append(chirps, chirp)
+		})
 	}
 
-	respondWithJSON(w, 200, chirps)
+	respondWithJSON(w, http.StatusOK, chirps)
 }
