@@ -32,6 +32,7 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
 
+	order := r.URL.Query().Get("sort")
 	s := r.URL.Query().Get("author_id")
 	if s == "" {
 		dbChirps, err := cfg.db.GetChirps(r.Context())
@@ -50,9 +51,15 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 				Body:      dbChirp.Body,
 			})
 		}
-		sort.Slice(chirps, func(i, j int) bool {
-			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
-		})
+		if order == "desc" {
+			sort.Slice(chirps, func(i, j int) bool {
+				return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+			})
+		} else {
+			sort.Slice(chirps, func(i, j int) bool {
+				return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+			})
+		}
 
 		respondWithJSON(w, http.StatusOK, chirps)
 	} else {
@@ -79,7 +86,9 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 				})
 			}
 		}
-
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
 		respondWithJSON(w, http.StatusOK, chirps)
 	}
 }
