@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 )
@@ -30,22 +31,55 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.db.GetChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
-		return
-	}
 
-	chirps := []Chirp{}
-	for _, dbChirp := range dbChirps {
-		chirps = append(chirps, Chirp{
-			ID:        dbChirp.ID,
-			CreatedAt: dbChirp.CreatedAt,
-			UpdatedAt: dbChirp.UpdatedAt,
-			UserID:    dbChirp.UserID.UUID,
-			Body:      dbChirp.Body,
+	s := r.URL.Query().Get("author_id")
+	if s == "" {
+		dbChirps, err := cfg.db.GetChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
+			return
+		}
+
+		chirps := []Chirp{}
+		for _, dbChirp := range dbChirps {
+			chirps = append(chirps, Chirp{
+				ID:        dbChirp.ID,
+				CreatedAt: dbChirp.CreatedAt,
+				UpdatedAt: dbChirp.UpdatedAt,
+				UserID:    dbChirp.UserID.UUID,
+				Body:      dbChirp.Body,
+			})
+		}
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
 		})
-	}
 
-	respondWithJSON(w, http.StatusOK, chirps)
+		respondWithJSON(w, http.StatusOK, chirps)
+	} else {
+		sUUID, err := uuid.Parse(s)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author ID", err)
+			return
+		}
+		dbChirps, err := cfg.db.GetChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
+			return
+		}
+
+		chirps := []Chirp{}
+		for _, dbChirp := range dbChirps {
+			if dbChirp.UserID.UUID == sUUID {
+				chirps = append(chirps, Chirp{
+					ID:        dbChirp.ID,
+					CreatedAt: dbChirp.CreatedAt,
+					UpdatedAt: dbChirp.UpdatedAt,
+					UserID:    dbChirp.UserID.UUID,
+					Body:      dbChirp.Body,
+				})
+			}
+		}
+
+		respondWithJSON(w, http.StatusOK, chirps)
+	}
 }
